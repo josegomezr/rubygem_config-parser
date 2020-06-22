@@ -1,11 +1,14 @@
 default:
   plain_key: plain_value
   erb_key: <%= %w(erb value).join('_') %>
+  env_key: <%= ENV['TEST_KEY'] %>
   mixed_key: "<%= 'mixed_' %>value"
 
   nested:
     nested_key: nested_value_default
     nested_key2: nested_value_default2
+    with_another: 
+      level: of_nestedness
 
   nested_env:
     nested_key: nested_value_env

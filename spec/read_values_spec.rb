@@ -8,6 +8,10 @@ describe Common::Options do
   end
 
   it 'reads nested value' do
-    expect( subject.nested['nested_key'] ).to eq("nested_value_default")
+    expect( subject.nested.nested_key ).to eq("nested_value_default")
+  end
+
+  it 'reads a deeply nested value' do
+    expect( subject.nested.with_another.level ).to eq("of_nestedness")
   end
 end

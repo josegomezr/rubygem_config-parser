@@ -12,15 +12,15 @@ describe Common::Options do
   end
 
   it 'reads local nested value' do
-    expect( subject.nested['nested_key'] ).to eq("nested_value_local")
+    expect( subject.nested.nested_key ).to eq("nested_value_local")
   end
 
   it 'reads nested value for local env' do
-    expect( subject.nested_env['nested_key']).to eq("nested_value_test_local")
+    expect( subject.nested_env.nested_key).to eq("nested_value_test_local")
   end
 
   it 'keeps default for not overwritten parts of nested set' do
-    expect(subject.nested_env['nested_key2']).to eq("nested_value_env2")
+    expect(subject.nested_env.nested_key2).to eq("nested_value_env2")
   end
 
 end

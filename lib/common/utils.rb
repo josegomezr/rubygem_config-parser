@@ -20,17 +20,24 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 #THE SOFTWARE.
 
-module Common
+require 'ostruct'
 
-  class Utils
+module Common::Utils
+  class << self
     # Suppress all warnings raised within the block of code. 
     # i.e. suppress_warnings { code_that_raise_warnings } 
-    def self.suppress_warnings
+    def suppress_warnings
       v = $VERBOSE
       $VERBOSE = nil
       yield
     ensure
       $VERBOSE = v
+    end
+
+    def to_recursive_struct(hash)
+      OpenStruct.new(hash.each_with_object({}) do |(key, val), memo|
+        memo[key] = val.is_a?(Hash) ? to_recursive_struct(val) : val
+      end)
     end
   end
 end

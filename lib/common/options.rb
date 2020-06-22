@@ -31,7 +31,7 @@ module Common
   class Options
 
     def initialize(cfg_file = 'config/options.yml', local_cfg_file = 'config/options-local.yml', load_env = nil)
-      Common::Utils::suppress_warnings do
+      Common::Utils.suppress_warnings do
         @load_env = load_env
         @cfg_file = cfg_file
         @local_cfg_file = local_cfg_file
@@ -43,7 +43,7 @@ module Common
           @persistent_local_cfg_file = "/etc/config/#{Rails.root.to_s.split("/")[-1]}/options.yml"
         end
       end
-      @options = {}
+      @options_hash = {}
       reload!
     end
 
@@ -78,9 +78,11 @@ module Common
         cmd_line_args['environment'] = defaults['environment'] || 'development'
       end
 
-      @options = read_options({:environment => cmd_line_args['environment'],
+      @options_hash = read_options({:environment => cmd_line_args['environment'],
                                :config_file => cmd_line_args['config-file'],
                                :verbose => cmd_line_args['verbose']}, cmd_line_args)
+
+      @options = Common::Utils.to_recursive_struct(@options_hash)
     end
 
     # Read the options from the config file.
@@ -89,7 +91,7 @@ module Common
     # it is used in place of local_cfg_file.
     # If :environment is specified, the options in the corresponding environment
     # is loaded and merged with those in 'default'.
-    def read_options args={}, update_options={}
+    def read_options args={}, extra_options={}
       args = {:environment => nil,
               :config_file => nil,
               :verbose => 'silent'
@@ -99,7 +101,7 @@ module Common
 
       if File.exists? @cfg_file
         vputs "Loading '#{@cfg_file}'", args[:verbose]
-        options = load_file @cfg_file
+        update_options(options, @cfg_file)
       end
 
       if args[:config_file]
@@ -108,21 +110,21 @@ module Common
           exit
         end
         vputs "Loading '#{args[:config_file]}'", args[:verbose]
-        update_options(args[:config_file], options)
+        update_options(options, args[:config_file])
       elsif @persistent_local_cfg_file && File.exists?(@persistent_local_cfg_file)
         vputs "Loading '#{@persistent_local_cfg_file}'", args[:verbose]
-        update_options(@persistent_local_cfg_file, options)
+        update_options(options, @persistent_local_cfg_file)
       elsif @local_cfg_file && File.exists?(@local_cfg_file)
         vputs "Loading '#{@local_cfg_file}'", args[:verbose]
-        update_options(@local_cfg_file, options)
+        update_options(options, @local_cfg_file)
       end
 
       if args[:environment]
         vputs "Using environment '#{args[:environment]}'", args[:verbose]
-        options = (options['default']||{}).deep_merge!(options[args[:environment]]||{})
+        options = (options['default'] || {}).deep_merge!(options[args[:environment]]||{})
       end
 
-      options.update(update_options)
+      options.update(extra_options)
       options['environment'] = 'development' if options['environment'].nil?
       options['verbose'] = false if options['verbose'].nil?
 
@@ -150,23 +152,21 @@ module Common
     # Allows retrieval of option value (i.e. options.option_name) that matches
     # the key name in the config file.
     def method_missing method_name, *arg
-      if method_name.to_s =~ /(.*)=$/
+      key = method_name.to_s
+
+      if key =~ /(.*)=$/
         key = $1
-        if @options.has_key? key
-          @options[key] = arg[0]
-          return @options[key]
-        end
-      else
-        key = method_name.to_s
-        if @options.has_key? key
-          return @options[key]
-        end
       end
-      raise NoMethodError.new("undefined method `#{key}' for Options:Class", "unknown_key")
+
+      if @options_hash.has_key? key
+        return @options.send(method_name, *arg)
+      end
+
+      raise NoMethodError.new("undefined method '#{key}' for Options:Class", "unknown_key")
     end
 
     # Merge options with content of <file>.
-    def update_options file, options
+    def update_options options, file
       options.deep_merge!(load_file(file))
     end
 
